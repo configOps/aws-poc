@@ -14,7 +14,7 @@ def lambda_handler(event, context):
     instance_id = message['EC2InstanceId']
     life_cycle_hook = message['LifecycleHookName']
     auto_scaling_group = message['AutoScalingGroupName']
-    execute_ssm=ssm_client.send_command( InstanceIds=[ instance_id ], DocumentName='AWS-RunShellScript', Parameters={ "commands":["/home/ubuntu/backup_logs.sh"],"executionTimeout":["3600"]  }, OutputS3BucketName='<bucket_name>', OutputS3KeyPrefix='<bucket_folder>' )
+    execute_ssm=ssm_client.send_command( InstanceIds=[ instance_id ], DocumentName='AWS-RunShellScript', Parameters={ "commands":["/home/ubuntu/logBackup_script.sh"],"executionTimeout":["3600"]  }, OutputS3BucketName='<bucket_name>', OutputS3KeyPrefix='<bucket_folder>' )
     ssm_command_id=execute_ssm['Command']['CommandId']
     print "ssm command","run for instance id", instance_id, "of asg", auto_scaling_group, "is" , ssm_command_id
     time.sleep(5)
