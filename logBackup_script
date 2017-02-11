@@ -1,0 +1,13 @@
+#! /bin/bash 
+LIFECYCLEHOOKNAME="log_backup_hook"
+ASGNAME="<autoscaling-group-name>"
+BACKUPDIRECTORY="/var/log"
+S3BUCKET="<bucket_name>"
+INSTANCEID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
+tar -cf /tmp/${INSTANCEID}.tar $BACKUPDIRECTORY
+if [ $? -eq 0 ]
+then
+        aws s3 cp /tmp/${INSTANCEID}.tar s3://${S3BUCKET}/${INSTANCEID}/ 
+fi
+aws autoscaling complete-lifecycle-action --lifecycle-hook-name ${LIFECYCLEHOOKNAME} --auto-scaling-group-name ${ASGNAME} --lifecycle-action-result "CONTINUE" --instance-id ${INSTANCEID} --region <region>
+
