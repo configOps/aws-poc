@@ -1,0 +1,37 @@
+import boto3
+import json
+import time
+ssm_client = boto3.client("ssm", region_name='<region-name>')
+asg_client = boto3.client('autoscaling', region_name='<region-name>')
+s3_client = boto3.client('s3', region_name='<region-name>')
+
+
+def lambda_handler(event, context):
+    print '\n', "Input Json is:"
+    print json.dumps(event)
+    print '\n'
+    message = event['detail']
+    instance_id = message['EC2InstanceId']
+    life_cycle_hook = message['LifecycleHookName']
+    auto_scaling_group = message['AutoScalingGroupName']
+    execute_ssm=ssm_client.send_command( InstanceIds=[ instance_id ], DocumentName='AWS-RunShellScript', Parameters={ "commands":["/home/ubuntu/backup_logs.sh"],"executionTimeout":["3600"]  }, OutputS3BucketName='<bucket_name>', OutputS3KeyPrefix='<bucket_folder>' )
+    ssm_command_id=execute_ssm['Command']['CommandId']
+    print "ssm command","run for instance id", instance_id, "of asg", auto_scaling_group, "is" , ssm_command_id
+    time.sleep(5)
+    while True:
+        ssm_status=ssm_client.get_command_invocation( CommandId=ssm_command_id, InstanceId=instance_id)['Status']
+        if ssm_status.lower() == "success" or ssm_status.lower() == "failed" :
+            print "exiting sleeping as ssm_status is", ssm_status
+            break
+        else:
+            print "sleeping for 5 sec as ssm_status is", ssm_status
+            time.sleep(5)
+    if ssm_status.lower() == "failed":
+        print "As ssm_status is", ssm_status," therefore abandoning lifecycle hook"
+        abandon = asg_client.complete_lifecycle_action( LifecycleHookName=message['LifecycleHookName'], AutoScalingGroupName=message['AutoScalingGroupName'], LifecycleActionResult='ABANDON', InstanceId=message['EC2InstanceId'])
+        print "Abandon result:"
+        print abandon
+    else:
+        print "lifecycle will be completed via shell script invoked by ssm document"
+    
+   
